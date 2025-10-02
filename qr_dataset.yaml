@@ -1,0 +1,10 @@
+# QR Code Detection Dataset Configuration
+# Note: Paths are relative to the project root or absolute paths
+train: processed_data/train/images
+val: processed_data/val/images
+
+# Number of classes
+nc: 1
+
+# Class names
+names: ['qr_code']
