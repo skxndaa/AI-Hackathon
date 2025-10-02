@@ -50,36 +50,36 @@ def prepare_dataset(raw_image_dir, annotation_json_path, processed_data_dir, tes
         processed_data_dir: Output directory for processed data
         test_size: Fraction of data to use for validation (default: 0.2)
     """
-    print("\n🔧 Starting dataset preparation...")
+    print("\nStarting dataset preparation...")
     
     raw_image_dir = Path(raw_image_dir)
     annotation_json_path = Path(annotation_json_path)
     processed_data_dir = Path(processed_data_dir)
 
-    # Load annotations
+    
     with open(annotation_json_path, 'r') as f:
         annotations = json.load(f)
     
-    print(f"📋 Loaded {len(annotations)} annotations")
+    print(f" Loaded {len(annotations)} annotations")
 
-    # Create output directories
+   
     for subset in ['train', 'val']:
         (processed_data_dir / subset / 'images').mkdir(parents=True, exist_ok=True)
         (processed_data_dir / subset / 'labels').mkdir(parents=True, exist_ok=True)
 
-    # Extract image IDs
+    
     image_ids = []
     for anno in annotations:
         if 'image_id' in anno:
             image_ids.append(anno['image_id'])
         else:
-            print(f"⚠️  Warning: Annotation missing 'image_id': {anno}. Skipping.")
+            print(f" Warning: Annotation missing 'image_id': {anno}. Skipping.")
 
-    # Split data
+
     train_ids, val_ids = train_test_split(image_ids, test_size=test_size, random_state=42)
-    print(f"📊 Splitting data: {len(train_ids)} training images, {len(val_ids)} validation images.")
+    print(f"Splitting data: {len(train_ids)} training images, {len(val_ids)} validation images.")
 
-    # Process each annotation
+    
     for annotation in tqdm(annotations, desc="Processing annotations"):
         if 'image_id' not in annotation:
             continue
@@ -91,18 +91,18 @@ def prepare_dataset(raw_image_dir, annotation_json_path, processed_data_dir, tes
         source_image_path = raw_image_dir / image_filename
 
         if not source_image_path.exists():
-            print(f"⚠️  Image not found for ID '{image_id}', skipping.")
+            print(f"Image not found for ID '{image_id}', skipping.")
             continue
 
-        # Copy image to processed directory
+        
         dest_image_path = processed_data_dir / subset / 'images' / image_filename
         shutil.copy(source_image_path, dest_image_path)
 
-        # Get image dimensions
+    
         with Image.open(source_image_path) as img:
             img_width, img_height = img.size
 
-        # Create YOLO format label file
+        
         label_path = processed_data_dir / subset / 'labels' / f"{image_id}.txt"
         with open(label_path, 'w') as label_file:
             if 'qrs' in annotation:
@@ -110,9 +110,9 @@ def prepare_dataset(raw_image_dir, annotation_json_path, processed_data_dir, tes
                     yolo_string = convert_bbox_to_yolo(img_width, img_height, qr['bbox'])
                     label_file.write(yolo_string)
             else:
-                print(f"⚠️  Warning: Annotation for image_id '{image_id}' has no 'qrs' field.")
+                print(f" Warning: Annotation for image_id '{image_id}' has no 'qrs' field.")
 
-    print("✅ Dataset preparation complete!")
+    print("Dataset preparation complete!")
 
 
 def create_dataset_yaml(processed_data_dir, yaml_path):
@@ -140,7 +140,7 @@ names: ['qr_code']
     with open(yaml_path, 'w') as f:
         f.write(yaml_content)
 
-    print(f"📝 Created dataset YAML file at: {yaml_path}")
+    print(f"Created dataset YAML file at: {yaml_path}")
 
 
 def train_model(yaml_path, epochs=50, batch_size=16, img_size=640, model_name='yolov8s.pt', 
@@ -157,12 +157,12 @@ def train_model(yaml_path, epochs=50, batch_size=16, img_size=640, model_name='y
         output_dir: Directory to save training outputs
         project_name: Name of the training project
     """
-    print(f"\n🚀 Starting model training with {model_name}...")
+    print(f"\n Starting model training with {model_name}...")
     
-    # Load YOLO model
+   
     model = YOLO(model_name)
 
-    # Train the model
+
     results = model.train(
         data=str(yaml_path),
         epochs=epochs,
@@ -170,13 +170,13 @@ def train_model(yaml_path, epochs=50, batch_size=16, img_size=640, model_name='y
         batch=batch_size,
         project=str(output_dir),
         name=project_name,
-        patience=10,  # Early stopping patience
+        patience=10, 
         save=True,
         val=True
     )
 
-    print("✅ Training complete!")
-    print(f"📁 Model weights saved to: {output_dir}/{project_name}/weights/")
+    print("Training complete!")
+    print(f" Model weights saved to: {output_dir}/{project_name}/weights/")
     
     return results
 
@@ -212,7 +212,7 @@ def main():
     
     args = parser.parse_args()
     
-    # Step 1: Prepare dataset (unless skipped)
+    
     if not args.skip_preprocessing:
         prepare_dataset(
             raw_image_dir=args.images,
@@ -220,15 +220,15 @@ def main():
             processed_data_dir=args.output
         )
     else:
-        print("⏭️  Skipping dataset preprocessing")
+        print(" Skipping dataset preprocessing")
     
-    # Step 2: Create YAML configuration
+   
     create_dataset_yaml(
         processed_data_dir=args.output,
         yaml_path=args.yaml
     )
     
-    # Step 3: Train model
+    
     train_model(
         yaml_path=args.yaml,
         epochs=args.epochs,
@@ -239,8 +239,8 @@ def main():
         project_name=args.name
     )
     
-    print("\n🎉 Training pipeline completed successfully!")
-    print(f"💡 Best model weights: {args.project_dir}/{args.name}/weights/best.pt")
+    print("\n Training pipeline completed successfully!")
+    print(f" Best model weights: {args.project_dir}/{args.name}/weights/best.pt")
 
 
 if __name__ == '__main__':
